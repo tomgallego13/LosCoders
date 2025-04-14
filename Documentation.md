@@ -1,5 +1,19 @@
 # Los Coders - Technical Documentation
 
+
+### Team - Los Coders:
+- **Thomas Gallego**
+- **Nadzumie Flores**
+- **Maxwell Lindbergh**
+- **Samuel Clark**
+- **Diego Gomez**
+
+### Course - CIS4914 Senior Project
+### Advisor - Dr. Marull, cmarull@ufl.edu
+### Presentation link: 
+
+## Keywords:
+
 ## 1. Project Overview
 This project aims to develop a tool that converts AI-generated test banks into Canvas quizzes or Respondus-compatible spreadsheets. The tool automates quiz formatting, reducing manual effort for educators. It leverages Python for data processing, Pandas for structuring content, and integrates with the Canvas API for seamless quiz uploads.
 
