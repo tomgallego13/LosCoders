@@ -11,7 +11,9 @@ class SpanishQuizGenerator:
         self.root = root
         self.root.title("Spanish Lesson Quiz Generator")
         self.root.geometry("800x700")
-        self.api_key = tk.StringVar()
+        
+        # Hardcoded API key - replace with your actual API key
+        self.api_key = "YOUR_API_KEY_HERE"
        
         # Fixed instructions for quiz generation with updated requirements
         self.fixed_instructions = """
@@ -86,17 +88,6 @@ class SpanishQuizGenerator:
         main_container = ttk.Frame(scrollable_frame)
         main_container.pack(fill="both", expand=True, padx=10, pady=10)
    
-        # API Key Frame
-        api_frame = ttk.LabelFrame(main_container, text="API Settings")
-        api_frame.pack(fill="x", padx=10, pady=10)
-   
-        ttk.Label(api_frame, text="API Key:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
-        ttk.Entry(api_frame, textvariable=self.api_key, width=50, show="*").grid(row=0, column=1, padx=5, pady=5)
-   
-        # Save API key to config checkbox
-        self.save_key = tk.BooleanVar(value=False)
-        ttk.Checkbutton(api_frame, text="Save API key", variable=self.save_key).grid(row=0, column=2, padx=5, pady=5)
-   
         # PDF Selection
         pdf_frame = ttk.LabelFrame(main_container, text="PDF Selection")
         pdf_frame.pack(fill="x", padx=10, pady=10)
@@ -140,15 +131,10 @@ class SpanishQuizGenerator:
         self.ess_count = tk.IntVar(value=2)
         ttk.Spinbox(question_frame, from_=0, to=10, textvariable=self.ess_count, width=5).grid(row=2, column=1, padx=5, pady=5)
    
-        # CSV Preview
-        csv_frame = ttk.LabelFrame(main_container, text="Generated CSV Preview")
-        csv_frame.pack(fill="both", expand=True, padx=10, pady=10)
-   
-        self.csv_preview = scrolledtext.ScrolledText(csv_frame, height=10)
-        self.csv_preview.pack(fill="both", expand=True, padx=5, pady=5)
+        # Removed CSV Preview section
    
         # Controls
-        controls_frame = ttk.Frame(main_container)  # Add to main_container, not root
+        controls_frame = ttk.Frame(main_container)
         controls_frame.pack(fill="x", padx=10, pady=10)
    
         self.status_var = tk.StringVar(value="Ready")
@@ -156,25 +142,6 @@ class SpanishQuizGenerator:
    
         ttk.Button(controls_frame, text="Generate Quiz", command=self.generate_quiz).pack(side="right", padx=5)
         ttk.Button(controls_frame, text="Save Location", command=self.select_save_location).pack(side="right", padx=5)
-   
-    def load_config(self):
-        try:
-            if os.path.exists("config.json"):
-                with open("config.json", "r") as f:
-                    config = json.load(f)
-                    if "api_key" in config:
-                        self.api_key.set(config["api_key"])
-                        self.save_key.set(True)
-        except Exception as e:
-            messagebox.showerror("Error", f"Error loading config: {e}")
-   
-    def save_config(self):
-        if self.save_key.get():
-            try:
-                with open("config.json", "w") as f:
-                    json.dump({"api_key": self.api_key.get()}, f)
-            except Exception as e:
-                messagebox.showerror("Error", f"Error saving config: {e}")
    
     def select_pdf(self):
         filepath = filedialog.askopenfilename(
@@ -226,11 +193,6 @@ class SpanishQuizGenerator:
         if not hasattr(self, 'save_directory'):
             self.save_directory = os.getcwd()
        
-        api_key = self.api_key.get().strip()
-        if not api_key:
-            self.status_var.set("Error: API key required")
-            return
-       
         pdf_path = self.pdf_path.get()
         if not pdf_path or not os.path.exists(pdf_path):
             self.status_var.set("Error: Please select a valid PDF file")
@@ -280,20 +242,19 @@ class SpanishQuizGenerator:
         Do not include any markdown formatting, explanations, or additional text - ONLY the CSV data.
         """
        
-        self.save_config()
         self.status_var.set("Extracting PDF text...")
        
         # Start in a thread to keep UI responsive
-        threading.Thread(target=self._generate_quiz_thread, args=(api_key, pdf_path, updated_instructions)).start()
+        threading.Thread(target=self._generate_quiz_thread, args=(pdf_path, updated_instructions)).start()
    
-    def _generate_quiz_thread(self, api_key, pdf_path, instructions):
+    def _generate_quiz_thread(self, pdf_path, instructions):
         try:
             # Extract PDF text
             self.root.after(0, lambda: self.status_var.set("Extracting PDF text..."))
             pdf_text = self.extract_pdf_text(pdf_path)
            
             # Initialize API client
-            client = anthropic.Client(api_key=api_key)
+            client = anthropic.Client(api_key=self.api_key)
            
             self.root.after(0, lambda: self.status_var.set("Generating quiz questions..."))
            
@@ -323,9 +284,7 @@ class SpanishQuizGenerator:
             if not csv_content.startswith("Type,Question"):
                 csv_content = "Type,Question,Answer1,Answer2,Answer3,Answer4,Correct Answer,Points\n" + csv_content
            
-            # Update preview
-            self.root.after(0, lambda: self.csv_preview.delete("1.0", tk.END))
-            self.root.after(0, lambda: self.csv_preview.insert(tk.END, csv_content))
+            # CSV preview section removed
            
             # Save to file
             filepath = os.path.join(self.save_directory, self.filename.get())
