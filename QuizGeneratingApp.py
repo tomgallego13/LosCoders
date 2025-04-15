@@ -71,14 +71,7 @@ class SpanishQuizGenerator:
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
        
-        # Bind mouse wheel events for scrolling
-        def _on_mouse_wheel(event):
-            canvas.yview_scroll(-1 * (event.delta // 120), "units")
-
-        # Bind for Windows and MacOS
-        canvas.bind_all("<MouseWheel>", _on_mouse_wheel)  # Windows
-        canvas.bind_all("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))  # Linux (scroll up)
-        canvas.bind_all("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))   # Linux (scroll down)
+        # Removed mouse wheel binding for scrolling
        
         # Pack the canvas and scrollbar
         canvas.pack(side="left", fill="both", expand=True)
