@@ -5,7 +5,6 @@ import anthropic
 import threading
 import PyPDF2
 
-#edit
 class SpanishQuizGenerator:
     def __init__(self, root):
         self.root = root
@@ -14,6 +13,9 @@ class SpanishQuizGenerator:
        
         # Hardcoded API key - replace with your actual API key
         self.api_key = "YOUR_API_KEY_HERE"
+        
+        # Available languages for the quiz
+        self.languages = ["Spanish", "English"]
        
         self.setup_ui()
    
@@ -62,6 +64,12 @@ class SpanishQuizGenerator:
         ttk.Label(output_frame, text="Output filename:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
         self.filename = tk.StringVar(value="spanish_quiz.csv")
         ttk.Entry(output_frame, textvariable=self.filename, width=30).grid(row=0, column=1, padx=5, pady=5)
+   
+        # Language selection
+        ttk.Label(output_frame, text="Quiz Language:").grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        self.selected_language = tk.StringVar(value="Spanish")
+        language_dropdown = ttk.Combobox(output_frame, textvariable=self.selected_language, values=self.languages, width=28, state="readonly")
+        language_dropdown.grid(row=1, column=1, padx=5, pady=5)
    
         # Question count configuration
         question_frame = ttk.LabelFrame(main_container, text="Multiple Choice Questions")
@@ -137,13 +145,16 @@ class SpanishQuizGenerator:
             self.status_var.set("Error: Please select a valid PDF file")
             return
        
-        # Get the number of multiple choice questions
+        # Get the number of multiple choice questions and selected language
         mc_count = self.mc_count.get()
+        language = self.selected_language.get()
        
-        # Instructions for multiple choice questions only
+        # Instructions for multiple choice questions only, with language specification
         instructions = f"""
         Create a quiz based on the Spanish lesson PDF I've uploaded.
         Generate {mc_count} multiple choice questions with 4 options each.
+        
+        IMPORTANT: Write only the question text in {language}. Keep all the answers in Spanish.
        
         IMPORTANT FORMATTING INSTRUCTIONS:
         Return ONLY raw CSV data with these column headers:
@@ -151,8 +162,8 @@ class SpanishQuizGenerator:
        
         For each question:
            - Type: "MC" (for Multiple Choice)
-           - Question: The full question text
-           - Answer1-4: Four possible answers
+           - Question: The full question text in {language}
+           - Answer1-4: Four possible answers in Spanish
            - Correct Answer: The number (1, 2, 3, or 4) of the correct option
            - Points: Always "1"
        
@@ -162,9 +173,9 @@ class SpanishQuizGenerator:
         self.status_var.set("Extracting PDF text...")
        
         # Start in a thread to keep UI responsive
-        threading.Thread(target=self._generate_quiz_thread, args=(pdf_path, instructions)).start()
+        threading.Thread(target=self._generate_quiz_thread, args=(pdf_path, instructions, language)).start()
    
-    def _generate_quiz_thread(self, pdf_path, instructions):
+    def _generate_quiz_thread(self, pdf_path, instructions, language):
         try:
             # Extract PDF text
             self.root.after(0, lambda: self.status_var.set("Extracting PDF text..."))
@@ -173,13 +184,13 @@ class SpanishQuizGenerator:
             # Initialize API client
             client = anthropic.Client(api_key=self.api_key)
            
-            self.root.after(0, lambda: self.status_var.set("Generating quiz questions..."))
+            self.root.after(0, lambda: self.status_var.set(f"Generating quiz questions in {language}..."))
            
             # Send request to Claude
             message = client.messages.create(
                 model="claude-3-7-sonnet-20250219",
                 max_tokens=4000,
-                system="You are an assistant specialized in creating educational materials for Spanish language teachers. Your task is to generate multiple choice quiz questions in CSV format based on Spanish lesson content.",
+                system=f"You are an assistant specialized in creating educational materials for Spanish language teachers. Your task is to generate multiple choice quiz questions where the questions are in {language} but all answer options remain in Spanish.",
                 messages=[
                     {
                         "role": "user",
@@ -206,7 +217,7 @@ class SpanishQuizGenerator:
             with open(filepath, 'w', newline='', encoding='utf-8') as file:
                 file.write(csv_content)
            
-            self.root.after(0, lambda: self.status_var.set(f"Quiz saved to {filepath}"))
+            self.root.after(0, lambda: self.status_var.set(f"Quiz in {language} saved to {filepath}"))
        
         except Exception as e:
             print(f"Error details: {e}")  # Log the error details to the console
