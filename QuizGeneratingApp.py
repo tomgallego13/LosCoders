@@ -3,10 +3,9 @@ import tkinter as tk
 from tkinter import ttk, scrolledtext, filedialog, messagebox
 import anthropic
 import threading
-import json
 import PyPDF2
 
-
+#edit
 class SpanishQuizGenerator:
     def __init__(self, root):
         self.root = root
@@ -64,24 +63,14 @@ class SpanishQuizGenerator:
         self.filename = tk.StringVar(value="spanish_quiz.csv")
         ttk.Entry(output_frame, textvariable=self.filename, width=30).grid(row=0, column=1, padx=5, pady=5)
    
-        # Question type configuration
-        question_frame = ttk.LabelFrame(main_container, text="Question Type Configuration")
+        # Question count configuration
+        question_frame = ttk.LabelFrame(main_container, text="Multiple Choice Questions")
         question_frame.pack(fill="x", padx=10, pady=10)
    
         # Multiple Choice count
-        ttk.Label(question_frame, text="Multiple Choice (MC):").grid(row=0, column=0, padx=5, pady=5, sticky="w")
-        self.mc_count = tk.IntVar(value=5)
-        ttk.Spinbox(question_frame, from_=0, to=10, textvariable=self.mc_count, width=5).grid(row=0, column=1, padx=5, pady=5)
-   
-        # Fill in the Blank count
-        ttk.Label(question_frame, text="Fill in the Blank (FIB):").grid(row=1, column=0, padx=5, pady=5, sticky="w")
-        self.fib_count = tk.IntVar(value=3)
-        ttk.Spinbox(question_frame, from_=0, to=10, textvariable=self.fib_count, width=5).grid(row=1, column=1, padx=5, pady=5)
-   
-        # Essay count
-        ttk.Label(question_frame, text="Essay (ESS):").grid(row=2, column=0, padx=5, pady=5, sticky="w")
-        self.ess_count = tk.IntVar(value=2)
-        ttk.Spinbox(question_frame, from_=0, to=10, textvariable=self.ess_count, width=5).grid(row=2, column=1, padx=5, pady=5)
+        ttk.Label(question_frame, text="Number of questions:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.mc_count = tk.IntVar(value=10)
+        ttk.Spinbox(question_frame, from_=1, to=20, textvariable=self.mc_count, width=5).grid(row=0, column=1, padx=5, pady=5)
    
         # Controls
         controls_frame = ttk.Frame(main_container)
@@ -148,45 +137,23 @@ class SpanishQuizGenerator:
             self.status_var.set("Error: Please select a valid PDF file")
             return
        
-        # Update the instructions based on user configuration
+        # Get the number of multiple choice questions
         mc_count = self.mc_count.get()
-        fib_count = self.fib_count.get()
-        ess_count = self.ess_count.get()
        
-        updated_instructions = f"""
+        # Instructions for multiple choice questions only
+        instructions = f"""
         Create a quiz based on the Spanish lesson PDF I've uploaded.
-        Generate a mix of question types (total of {mc_count + fib_count + ess_count} questions):
-       
-        - Multiple Choice (MC): {mc_count} questions with 4 options each
-        - Fill in the Blank (FIB): {fib_count} questions where students need to complete a sentence
-        - Essay (ESS): {ess_count} questions requiring short written responses
+        Generate {mc_count} multiple choice questions with 4 options each.
        
         IMPORTANT FORMATTING INSTRUCTIONS:
         Return ONLY raw CSV data with these column headers:
         Type,Question,Answer1,Answer2,Answer3,Answer4,Correct Answer,Points
        
-        For each question type:
-       
-        1. MC (Multiple Choice):
-           - Type: "MC"
+        For each question:
+           - Type: "MC" (for Multiple Choice)
            - Question: The full question text
            - Answer1-4: Four possible answers
            - Correct Answer: The number (1, 2, 3, or 4) of the correct option
-           - Points: Always "1"
-       
-        2. FIB (Fill in the Blank):
-           - Type: "FIB"
-           - Question: Sentence with [blank] where the answer should go
-           - Answer1: The correct answer to fill in the blank
-           - Answer2-4: Leave empty (just commas with no text)
-           - Correct Answer: "1" (since Answer1 contains the solution)
-           - Points: Always "1"
-       
-        3. ESS (Essay):
-           - Type: "ESS"
-           - Question: The essay prompt or question
-           - Answer1-4: Leave empty (just commas with no text)
-           - Correct Answer: Leave empty (just a comma)
            - Points: Always "1"
        
         Do not include any markdown formatting, explanations, or additional text - ONLY the CSV data.
@@ -195,7 +162,7 @@ class SpanishQuizGenerator:
         self.status_var.set("Extracting PDF text...")
        
         # Start in a thread to keep UI responsive
-        threading.Thread(target=self._generate_quiz_thread, args=(pdf_path, updated_instructions)).start()
+        threading.Thread(target=self._generate_quiz_thread, args=(pdf_path, instructions)).start()
    
     def _generate_quiz_thread(self, pdf_path, instructions):
         try:
@@ -212,7 +179,7 @@ class SpanishQuizGenerator:
             message = client.messages.create(
                 model="claude-3-7-sonnet-20250219",
                 max_tokens=4000,
-                system="You are an assistant specialized in creating educational materials for Spanish language teachers. Your task is to generate quiz questions in CSV format based on Spanish lesson content.",
+                system="You are an assistant specialized in creating educational materials for Spanish language teachers. Your task is to generate multiple choice quiz questions in CSV format based on Spanish lesson content.",
                 messages=[
                     {
                         "role": "user",
@@ -251,4 +218,3 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = SpanishQuizGenerator(root)
     root.mainloop()
-
