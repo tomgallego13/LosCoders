@@ -4,6 +4,9 @@ from tkinter import ttk, scrolledtext, filedialog, messagebox
 import anthropic
 import threading
 import PyPDF2
+import csv
+import io
+
 
 class SpanishQuizGenerator:
     def __init__(self, root):
@@ -13,7 +16,7 @@ class SpanishQuizGenerator:
        
         # Hardcoded API key - replace with your actual API key
         self.api_key = "YOUR_API_KEY_HERE"
-        
+       
         # Available languages for the quiz
         self.languages = ["Spanish", "English"]
        
@@ -87,6 +90,10 @@ class SpanishQuizGenerator:
         self.status_var = tk.StringVar(value="Ready")
         ttk.Label(controls_frame, textvariable=self.status_var).pack(side="left", padx=5)
    
+        # Progress bar
+        self.progress_var = tk.DoubleVar(value=0)
+        self.progress_bar = ttk.Progressbar(controls_frame, variable=self.progress_var, length=200, mode="indeterminate")
+       
         ttk.Button(controls_frame, text="Generate Quiz", command=self.generate_quiz).pack(side="right", padx=5)
         ttk.Button(controls_frame, text="Save Location", command=self.select_save_location).pack(side="right", padx=5)
    
@@ -136,6 +143,14 @@ class SpanishQuizGenerator:
         except Exception as e:
             raise Exception(f"Error extracting PDF text: {e}")
    
+    def update_progress(self, state):
+        if state:
+            self.progress_bar.pack(side="left", padx=10)
+            self.progress_bar.start(10)
+        else:
+            self.progress_bar.stop()
+            self.progress_bar.pack_forget()
+   
     def generate_quiz(self):
         if not hasattr(self, 'save_directory'):
             self.save_directory = os.getcwd()
@@ -153,28 +168,27 @@ class SpanishQuizGenerator:
         instructions = f"""
         Create a quiz based on the Spanish lesson PDF I've uploaded.
         Generate {mc_count} multiple choice questions with 4 options each.
-        
+       
         IMPORTANT: Write only the question text in {language}. Keep all the answers in Spanish.
-        
-        CRITICAL CSV FORMATTING REQUIREMENTS:
-        1. NEVER include commas within any fields (questions or answers), as they will break the CSV structure
-        2. If you need to use commas in text, replace them with semicolons (;) or dashes (-)
-        3. Double-check that each row has EXACTLY the correct number of commas (7 commas for 8 fields)
        
-        Return ONLY raw CSV data with these column headers:
-        Type,Question,Answer1,Answer2,Answer3,Answer4,Correct Answer,Points
+        Return the quiz in this JSON format:
+        [
+            {{
+                "type": "MC",
+                "question": "Question text in {language}",
+                "answers": ["Spanish answer 1", "Spanish answer 2", "Spanish answer 3", "Spanish answer 4"],
+                "correctAnswer": 1,
+                "points": 1
+            }},
+            // more questions...
+        ]
        
-        For each question:
-           - Type: "MC" (for Multiple Choice)
-           - Question: The full question text in {language} (NO COMMAS!)
-           - Answer1-4: Four possible answers in Spanish (NO COMMAS!)
-           - Correct Answer: The number (1, 2, 3, or 4) of the correct option
-           - Points: Always "1"
-       
-        Do not include any markdown formatting, explanations, or additional text - ONLY the CSV data.
+        Make sure each question tests understanding of the material from the PDF.
+        Number correctAnswer from 1 to 4, indicating which answer is correct.
         """
        
         self.status_var.set("Extracting PDF text...")
+        self.update_progress(True)
        
         # Start in a thread to keep UI responsive
         threading.Thread(target=self._generate_quiz_thread, args=(pdf_path, instructions, language)).start()
@@ -194,7 +208,7 @@ class SpanishQuizGenerator:
             message = client.messages.create(
                 model="claude-3-7-sonnet-20250219",
                 max_tokens=4000,
-                system=f"You are an assistant specialized in creating educational materials for Spanish language teachers. Your task is to generate multiple choice quiz questions where the questions are in {language} but all answer options remain in Spanish. CRITICAL: Never include commas in any field values as they will break the CSV structure. Use semicolons or dashes instead of commas in text.",
+                system=f"You are an assistant specialized in creating educational materials for Spanish language teachers. Your task is to generate multiple choice quiz questions where the questions are in {language} but all answer options remain in Spanish. Return the quiz data in JSON format.",
                 messages=[
                     {
                         "role": "user",
@@ -203,23 +217,55 @@ class SpanishQuizGenerator:
                 ]
             )
            
-            # Extract CSV content
-            csv_content = message.content[0].text.strip()
+            # Extract JSON content
+            response_text = message.content[0].text.strip()
            
-            # Clean up any potential markdown formatting if Claude adds it
-            if csv_content.startswith("```") and csv_content.endswith("```"):
-                csv_content = csv_content[csv_content.find("\n")+1:csv_content.rfind("\n")]
-            elif csv_content.startswith("```csv") and csv_content.endswith("```"):
-                csv_content = csv_content[csv_content.find("\n")+1:csv_content.rfind("\n")]
+            # Extract JSON from response if needed
+            import json
+            import re
            
-            # Make sure the first line is the header
-            if not csv_content.startswith("Type,Question"):
-                csv_content = "Type,Question,Answer1,Answer2,Answer3,Answer4,Correct Answer,Points\n" + csv_content
+            # Find JSON array in the response
+            json_match = re.search(r'\[\s*\{.*\}\s*\]', response_text, re.DOTALL)
+            if json_match:
+                json_data = json_match.group(0)
+            else:
+                # If JSON array not found, try to clean up the text
+                # Remove any markdown code block formatting
+                if response_text.startswith("```") and response_text.endswith("```"):
+                    lines = response_text.split("\n")
+                    if len(lines) > 2:
+                        response_text = "\n".join(lines[1:-1])
+                json_data = response_text
            
-            # Save to file
+            # Parse JSON data
+            try:
+                quiz_data = json.loads(json_data)
+            except json.JSONDecodeError as e:
+                raise Exception(f"Failed to parse quiz data: {str(e)}")
+           
+            # Convert JSON to CSV using CSV module for proper escaping
             filepath = os.path.join(self.save_directory, self.filename.get())
-            with open(filepath, 'w', newline='', encoding='utf-8') as file:
-                file.write(csv_content)
+           
+            with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
+                # Create CSV writer
+                csv_writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
+               
+                # Write header
+                csv_writer.writerow(["Type", "Question", "Answer1", "Answer2", "Answer3", "Answer4", "Correct Answer", "Points"])
+               
+                # Write quiz questions
+                for question in quiz_data:
+                    row = [
+                        question["type"],
+                        question["question"],
+                        question["answers"][0],
+                        question["answers"][1],
+                        question["answers"][2],
+                        question["answers"][3],
+                        question["correctAnswer"],
+                        question["points"]
+                    ]
+                    csv_writer.writerow(row)
            
             self.root.after(0, lambda: self.status_var.set(f"Quiz in {language} saved to {filepath}"))
        
@@ -227,9 +273,14 @@ class SpanishQuizGenerator:
             print(f"Error details: {e}")  # Log the error details to the console
             self.root.after(0, lambda: self.status_var.set(f"Error: {str(e)}"))
             messagebox.showerror("Error", str(e))
+        finally:
+            self.root.after(0, lambda: self.update_progress(False))
+
+
 
 
 if __name__ == "__main__":
     root = tk.Tk()
     app = SpanishQuizGenerator(root)
     root.mainloop()
+
