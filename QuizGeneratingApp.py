@@ -6,54 +6,15 @@ import threading
 import json
 import PyPDF2
 
+
 class SpanishQuizGenerator:
     def __init__(self, root):
         self.root = root
         self.root.title("Spanish Lesson Quiz Generator")
         self.root.geometry("800x700")
-        
+       
         # Hardcoded API key - replace with your actual API key
         self.api_key = "YOUR_API_KEY_HERE"
-       
-        # Fixed instructions for quiz generation with updated requirements
-        self.fixed_instructions = """
-        Create a quiz based on the Spanish lesson PDF I've uploaded.
-        Generate a mix of question types (approximately 10 questions total):
-       
-        - Multiple Choice (MC): 5-6 questions with 4 options each
-        - Fill in the Blank (FIB): 2-3 questions where students need to complete a sentence
-        - Essay (ESS): 1-2 questions requiring short written responses
-       
-        IMPORTANT FORMATTING INSTRUCTIONS:
-        Return ONLY raw CSV data with these column headers:
-        Type,Question,Answer1,Answer2,Answer3,Answer4,Correct Answer,Points
-       
-        For each question type:
-       
-        1. MC (Multiple Choice):
-           - Type: "MC"
-           - Question: The full question text
-           - Answer1-4: Four possible answers
-           - Correct Answer: The number (1, 2, 3, or 4) of the correct option
-           - Points: Always "1"
-       
-        2. FIB (Fill in the Blank):
-           - Type: "FIB"
-           - Question: Sentence with [blank] where the answer should go
-           - Answer1: The correct answer to fill in the blank
-           - Answer2-4: Leave empty (just commas with no text)
-           - Correct Answer: "1" (since Answer1 contains the solution)
-           - Points: Always "1"
-       
-        3. ESS (Essay):
-           - Type: "ESS"
-           - Question: The essay prompt or question
-           - Answer1-4: Leave empty (just commas with no text)
-           - Correct Answer: Leave empty (just a comma)
-           - Points: Always "1"
-       
-        Do not include any markdown formatting, explanations, or additional text - ONLY the CSV data.
-        """
        
         self.setup_ui()
    
@@ -70,8 +31,6 @@ class SpanishQuizGenerator:
         )
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
-       
-        # Removed mouse wheel binding for scrolling
        
         # Pack the canvas and scrollbar
         canvas.pack(side="left", fill="both", expand=True)
@@ -123,8 +82,6 @@ class SpanishQuizGenerator:
         ttk.Label(question_frame, text="Essay (ESS):").grid(row=2, column=0, padx=5, pady=5, sticky="w")
         self.ess_count = tk.IntVar(value=2)
         ttk.Spinbox(question_frame, from_=0, to=10, textvariable=self.ess_count, width=5).grid(row=2, column=1, padx=5, pady=5)
-   
-        # Removed CSV Preview section
    
         # Controls
         controls_frame = ttk.Frame(main_container)
@@ -277,8 +234,6 @@ class SpanishQuizGenerator:
             if not csv_content.startswith("Type,Question"):
                 csv_content = "Type,Question,Answer1,Answer2,Answer3,Answer4,Correct Answer,Points\n" + csv_content
            
-            # CSV preview section removed
-           
             # Save to file
             filepath = os.path.join(self.save_directory, self.filename.get())
             with open(filepath, 'w', newline='', encoding='utf-8') as file:
@@ -291,7 +246,9 @@ class SpanishQuizGenerator:
             self.root.after(0, lambda: self.status_var.set(f"Error: {str(e)}"))
             messagebox.showerror("Error", str(e))
 
+
 if __name__ == "__main__":
     root = tk.Tk()
     app = SpanishQuizGenerator(root)
     root.mainloop()
+
