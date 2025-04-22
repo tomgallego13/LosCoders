@@ -155,15 +155,19 @@ class SpanishQuizGenerator:
         Generate {mc_count} multiple choice questions with 4 options each.
         
         IMPORTANT: Write only the question text in {language}. Keep all the answers in Spanish.
+        
+        CRITICAL CSV FORMATTING REQUIREMENTS:
+        1. NEVER include commas within any fields (questions or answers), as they will break the CSV structure
+        2. If you need to use commas in text, replace them with semicolons (;) or dashes (-)
+        3. Double-check that each row has EXACTLY the correct number of commas (7 commas for 8 fields)
        
-        IMPORTANT FORMATTING INSTRUCTIONS:
         Return ONLY raw CSV data with these column headers:
         Type,Question,Answer1,Answer2,Answer3,Answer4,Correct Answer,Points
        
         For each question:
            - Type: "MC" (for Multiple Choice)
-           - Question: The full question text in {language}
-           - Answer1-4: Four possible answers in Spanish
+           - Question: The full question text in {language} (NO COMMAS!)
+           - Answer1-4: Four possible answers in Spanish (NO COMMAS!)
            - Correct Answer: The number (1, 2, 3, or 4) of the correct option
            - Points: Always "1"
        
@@ -190,7 +194,7 @@ class SpanishQuizGenerator:
             message = client.messages.create(
                 model="claude-3-7-sonnet-20250219",
                 max_tokens=4000,
-                system=f"You are an assistant specialized in creating educational materials for Spanish language teachers. Your task is to generate multiple choice quiz questions where the questions are in {language} but all answer options remain in Spanish.",
+                system=f"You are an assistant specialized in creating educational materials for Spanish language teachers. Your task is to generate multiple choice quiz questions where the questions are in {language} but all answer options remain in Spanish. CRITICAL: Never include commas in any field values as they will break the CSV structure. Use semicolons or dashes instead of commas in text.",
                 messages=[
                     {
                         "role": "user",
